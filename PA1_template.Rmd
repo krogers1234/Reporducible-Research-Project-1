@@ -1,0 +1,102 @@
+---
+title: "PA1_template.Rmd"
+output: html_document
+---
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(scales)
+dat <- read.csv("activity.csv")
+dat$date <- as.Date(dat$date)
+dat$interval <- sprintf("%04d",dat$interval)
+dat$interval <- sub("([[:digit:]]{2,2})$", ":\\1", dat$interval)
+head(dat, 10)
+
+dat_steps <- dat %>% group_by(date) %>% summarize(total_steps = sum(steps))
+head(dat_steps, 10)
+
+RR1<- ggplot(data = dat_steps, aes(x = total_steps)) +
+        geom_histogram(binwidth = 1000) +
+        ggtitle("Steps per day") +
+        xlab("Total steps") +
+        ylab("Frequency") +
+        theme(plot.title = element_text(size = 18))+
+        theme(panel.background = element_rect(fill = 'gray'))+
+        theme(plot.title = element_text(hjust = 0.5))
+              
+print(RR1)
+
+mean(dat_steps$total_steps, na.rm = TRUE)
+median(dat_steps$total_steps, na.rm = TRUE)
+
+dat_interval <- dat %>% group_by(interval) %>% summarize(avg_steps = mean(steps, na.rm = TRUE))
+dat_interval$interval <- as.POSIXct(dat_interval$interval, format = "%H:%M")
+
+
+ggplot(data = dat_interval, aes(x = interval, y = avg_steps)) +
+        geom_line() +
+        scale_x_datetime(labels=date_format("%H:%M")) +
+        xlab("Time") +
+        ylab("Avg number of steps") +
+        ggtitle("Avg steps throughout the day") +
+        theme(plot.title = element_text(size = 18))+
+        theme(panel.background = element_rect(fill = 'gray'))+
+        theme(plot.title = element_text(hjust = 0.5))
+
+
+dat_interval %>% slice(which.max(dat_interval$avg_steps))
+
+sum(is.na(dat$steps))
+
+dat_complete <- dat
+dat_interval <- dat %>% group_by(interval) %>% summarize(avg_steps = mean(steps, na.rm = TRUE))
+dat_complete <- full_join(dat_complete, dat_interval, by = "interval")
+dat_complete[is.na(dat_complete$steps), "steps"]  <- dat_complete[is.na(dat_complete$steps), "avg_steps"] 
+dat_complete <- dat_complete[,-4]
+head(dat_complete)
+
+
+dat_steps <- dat_complete %>% group_by(date) %>% summarize(total_steps = sum(steps))
+RR2<-ggplot(data = dat_steps, aes(x = total_steps)) +
+        geom_histogram(binwidth = 1500) +
+        ggtitle("Total steps per day") +
+        xlab("Total steps") +
+        ylab("Frequency") +
+        theme(plot.title = element_text(size = 18))
+
+print(RR2)
+
+mean(dat_steps$total_steps, na.rm = TRUE)
+median(dat_steps$total_steps, na.rm = TRUE)
+
+dat_complete$day <- weekdays(dat_complete$date)
+dat_complete$day <- as.numeric(as.factor(dat_complete$day))
+dat_complete$day <- ifelse(dat_complete$day %in% 3:4, "Weekend", "Weekday")
+dat_complete$day <- as.factor(dat_complete$day)
+head(dat_complete)
+
+dat_interval <- dat_complete %>% group_by(interval, day) %>% summarize(avg_steps = mean(steps, na.rm = TRUE))
+dat_interval$interval <- as.POSIXct(dat_interval$interval, format = "%H:%M")
+
+
+RR3<-ggplot(data = dat_interval, aes(x = interval, y = avg_steps)) +
+        geom_line() +
+        facet_wrap(~ day, ncol = 1) +
+        scale_x_datetime(labels=date_format("%H:%M")) +
+        xlab("Time") +
+        ylab("Average number of steps") +
+        ggtitle("Average steps throughout the day") +
+        theme(plot.title = element_text(size = 18))+
+        theme(panel.background = element_rect(fill = 'gray'))+
+        theme(plot.title = element_text(hjust = 0.5))
+
+print(RR3)
+
+dev.off()
+```
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
